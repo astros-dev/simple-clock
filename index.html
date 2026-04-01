@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nepal Digital Clock</title>
+    <!-- Import Noto Sans Devanagari from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #000000;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Noto Sans Devanagari', sans-serif;
+            overflow: hidden; /* Prevents scrollbars */
+        }
+
+        #clock {
+            font-size: 18vw; /* Scales text smoothly with the width of the screen */
+            font-weight: 700;
+            /* Ensures digits take up uniform horizontal space to prevent jittering when seconds change */
+            font-variant-numeric: tabular-nums; 
+            letter-spacing: 0.02em;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Slight glow effect */
+            user-select: none; /* Prevents text highlighting */
+        }
+
+        /* Adjust sizing for portrait/mobile orientation */
+        @media (max-aspect-ratio: 1/1) {
+            #clock {
+                font-size: 22vw;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="clock">00:00:00</div>
+
+    <script>
+        function updateClock() {
+            // Get the current time exactly in Asia/Kathmandu timezone
+            const now = new Date();
+            const nepalTimeString = now.toLocaleString("en-US", { timeZone: "Asia/Kathmandu" });
+            const nepalTime = new Date(nepalTimeString);
+
+            // Extract hours, minutes, and seconds
+            let rawHours = nepalTime.getHours();
+            rawHours = rawHours % 12 || 12; // Convert to 12-hour format
+            const hours = String(rawHours).padStart(2, '0');
+            const minutes = String(nepalTime.getMinutes()).padStart(2, '0');
+            const seconds = String(nepalTime.getSeconds()).padStart(2, '0');
+
+            // Format as hh:mm:ss
+            const formattedTime = `${hours}:${minutes}:${seconds}`;
+
+            // Update the DOM
+            document.getElementById('clock').textContent = formattedTime;
+        }
+
+        // Initialize immediately, then update every second
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
