@@ -30,6 +30,7 @@
             letter-spacing: 0.02em;
             text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Slight glow effect */
             user-select: none; /* Prevents text highlighting */
+            transition: opacity 0.3s ease;
         }
 
         /* Adjust sizing for portrait/mobile orientation */
@@ -42,18 +43,64 @@
 </head>
 <body>
 
-    <div id="clock">00:00:00</div>
+    <div id="clock">--:--:--</div>
 
     <script>
+        let serverTimeOffset = 0;
+        let isTimeLoaded = false;
+
+        // Fetch exact time from a public time server
+        async function fetchServerTime() {
+            try {
+                // Primary API: timeapi.io is generally much more permissive with CORS in browser environments
+                const response = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=UTC');
+                if (!response.ok) throw new Error("Network response was not ok");
+                
+                const data = await response.json();
+                
+                // timeapi.io returns a local dateTime string like "2024-05-18T10:30:00.123". Appending 'Z' makes it explicitly UTC.
+                const serverTime = new Date(data.dateTime + "Z").getTime();
+                const clientTime = Date.now();
+                
+                // Calculate the difference between the true time and the local computer's time
+                serverTimeOffset = serverTime - clientTime;
+                isTimeLoaded = true;
+            } catch (error) {
+                console.warn("Primary time API failed, trying fallback...", error);
+                
+                try {
+                    // Fallback API: worldtimeapi.org (sometimes blocked by adblockers/CORS, but good as a backup)
+                    const fallbackResponse = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+                    if (!fallbackResponse.ok) throw new Error("Fallback response was not ok");
+                    
+                    const fallbackData = await fallbackResponse.json();
+                    
+                    const serverTime = new Date(fallbackData.datetime).getTime();
+                    serverTimeOffset = serverTime - Date.now();
+                    isTimeLoaded = true;
+                } catch (fallbackError) {
+                    console.error("All time APIs failed. Falling back to local device time.", fallbackError);
+                    // If all APIs fail, fallback to a 0 offset (client time)
+                    serverTimeOffset = 0; 
+                    isTimeLoaded = true;
+                }
+            }
+        }
+
         function updateClock() {
-            // Get the current time exactly in Asia/Kathmandu timezone
-            const now = new Date();
-            const nepalTimeString = now.toLocaleString("en-US", { timeZone: "Asia/Kathmandu" });
+            if (!isTimeLoaded) return; // Wait until we have the server time
+
+            // Apply the offset to the current tick to get the true synchronized time
+            const trueNow = new Date(Date.now() + serverTimeOffset);
+            
+            // Format it specifically to Kathmandu timezone
+            const nepalTimeString = trueNow.toLocaleString("en-US", { timeZone: "Asia/Kathmandu" });
             const nepalTime = new Date(nepalTimeString);
 
             // Extract hours, minutes, and seconds
             let rawHours = nepalTime.getHours();
             rawHours = rawHours % 12 || 12; // Convert to 12-hour format
+            
             const hours = String(rawHours).padStart(2, '0');
             const minutes = String(nepalTime.getMinutes()).padStart(2, '0');
             const seconds = String(nepalTime.getSeconds()).padStart(2, '0');
@@ -65,9 +112,11 @@
             document.getElementById('clock').textContent = formattedTime;
         }
 
-        // Initialize immediately, then update every second
-        updateClock();
-        setInterval(updateClock, 1000);
+        // Initialize
+        fetchServerTime().then(() => {
+            updateClock(); // Show time immediately after fetching
+            setInterval(updateClock, 1000); // Update every second thereafter
+        });
     </script>
 </body>
 </html>
